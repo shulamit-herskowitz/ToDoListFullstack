@@ -4,76 +4,78 @@ using TodoApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container
+// --- 1. הוספת שירותים למכולה (Container) ---
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add CORS policy for React app
+// --- 2. הגדרת CORS - פותר את השגיאה שראינו בדפדפן ---
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
+        // אישור גישה ספציפי לכתובת של ה-React שלך ב-Render
+        policy.WithOrigins("https://todo-list-app-hubt.onrender.com") 
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
 });
 
-// Add DbContext with SQLite for Development and MySQL for Production
+// --- 3. הגדרת מסד הנתונים ---
 if (builder.Environment.IsDevelopment())
 {
-    // Development: Use SQLite
+    // סביבת פיתוח: שימוש ב-SQLite
     builder.Services.AddDbContext<ToDoDbContext>(options =>
         options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 }
 else
 {
-    // Production: Use MySQL from environment variable
+    // סביבת ייצור (Production): שימוש ב-MySQL
     var connectionString = Environment.GetEnvironmentVariable("CONNECTION_STRING") 
         ?? throw new InvalidOperationException("CONNECTION_STRING environment variable is not set.");
     
+    // הגדרת גרסת השרת ידנית ל-8.0.0 (הגרסה של CleverCloud) כדי למנוע שגיאה 500
+    var serverVersion = new MySqlServerVersion(new Version(8, 0, 0)); 
+    
     builder.Services.AddDbContext<ToDoDbContext>(options =>
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        options.UseMySql(connectionString, serverVersion, options => 
+            options.EnableRetryOnFailure())); // הוספת מנגנון ניסיון חוזר במקרה של ניתוק
 }
 
 var app = builder.Build();
 
-// --- עדכון כאן: אפשור Swagger גם ב-Production כדי שנוכל לדבג ב-Render ---
+// --- 4. הגדרת Swagger - פתוח גם ב-Production לצרכי ניפוי שגיאות ---
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Todo API V1");
-    c.RoutePrefix = string.Empty; // זה יגרום ל-Swagger להיפתח ישר כשנכנסים לכתובת האתר
+    c.RoutePrefix = string.Empty; // ה-Swagger ייפתח ישירות בכתובת השרת
 });
 
-// Enable CORS
+// --- 5. הפעלת CORS ---
 app.UseCors("AllowAll");
 
 // ============================================
-// API ENDPOINTS
+// API ENDPOINTS - ניהול המשימות
 // ============================================
 
-// GET: /items - Fetch all items
+// שליפת כל המשימות
 app.MapGet("/items", async (ToDoDbContext db) =>
 {
     return await db.Items.ToListAsync();
 })
 .WithName("GetAllItems")
-.WithTags("Items")
-.Produces<List<Item>>(StatusCodes.Status200OK);
+.WithTags("Items");
 
-// GET: /items/{id} - Fetch item by ID
+// שליפת משימה לפי מזהה (ID)
 app.MapGet("/items/{id}", async (int id, ToDoDbContext db) =>
 {
     var item = await db.Items.FindAsync(id);
     return item is not null ? Results.Ok(item) : Results.NotFound();
 })
 .WithName("GetItemById")
-.WithTags("Items")
-.Produces<Item>(StatusCodes.Status200OK)
-.Produces(StatusCodes.Status404NotFound);
+.WithTags("Items");
 
-// POST: /items - Create a new item
+// יצירת משימה חדשה
 app.MapPost("/items", async (Item item, ToDoDbContext db) =>
 {
     db.Items.Add(item);
@@ -81,11 +83,9 @@ app.MapPost("/items", async (Item item, ToDoDbContext db) =>
     return Results.Created($"/items/{item.Id}", item);
 })
 .WithName("CreateItem")
-.WithTags("Items")
-.Produces<Item>(StatusCodes.Status201Created)
-.Produces(StatusCodes.Status400BadRequest);
+.WithTags("Items");
 
-// PUT: /items/{id} - Update an item's status
+// עדכון משימה קיימת
 app.MapPut("/items/{id}", async (int id, Item inputItem, ToDoDbContext db) =>
 {
     var item = await db.Items.FindAsync(id);
@@ -98,11 +98,9 @@ app.MapPut("/items/{id}", async (int id, Item inputItem, ToDoDbContext db) =>
     return Results.Ok(item);
 })
 .WithName("UpdateItem")
-.WithTags("Items")
-.Produces<Item>(StatusCodes.Status200OK)
-.Produces(StatusCodes.Status404NotFound);
+.WithTags("Items");
 
-// DELETE: /items/{id} - Remove an item
+// מחיקת משימה
 app.MapDelete("/items/{id}", async (int id, ToDoDbContext db) =>
 {
     var item = await db.Items.FindAsync(id);
@@ -114,8 +112,6 @@ app.MapDelete("/items/{id}", async (int id, ToDoDbContext db) =>
     return Results.NoContent();
 })
 .WithName("DeleteItem")
-.WithTags("Items")
-.Produces(StatusCodes.Status204NoContent)
-.Produces(StatusCodes.Status404NotFound);
+.WithTags("Items");
 
 app.Run();
