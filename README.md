@@ -10,7 +10,7 @@ This is the backend server for a full-stack ToDo List application. The project f
 * **Deployment:** Hosted on **Render** using a **Docker** container.
 
 ## 🛠 Tech Stack
-* **Framework:** .NET 8.0
+* **Framework:** .NET 9.0
 * **ORM:** EF Core
 * **Database:** MySQL (CleverCloud)
 * **Hosting:** Render (Web Service)
