@@ -38,12 +38,13 @@ else
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
+// --- עדכון כאן: אפשור Swagger גם ב-Production כדי שנוכל לדבג ב-Render ---
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Todo API V1");
+    c.RoutePrefix = string.Empty; // זה יגרום ל-Swagger להיפתח ישר כשנכנסים לכתובת האתר
+});
 
 // Enable CORS
 app.UseCors("AllowAll");
@@ -84,7 +85,7 @@ app.MapPost("/items", async (Item item, ToDoDbContext db) =>
 .Produces<Item>(StatusCodes.Status201Created)
 .Produces(StatusCodes.Status400BadRequest);
 
-// PUT: /items/{id} - Update an item's status (or entire item)
+// PUT: /items/{id} - Update an item's status
 app.MapPut("/items/{id}", async (int id, Item inputItem, ToDoDbContext db) =>
 {
     var item = await db.Items.FindAsync(id);
