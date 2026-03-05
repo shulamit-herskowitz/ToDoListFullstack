@@ -17,7 +17,7 @@ This is the backend server for a full-stack ToDo List application. The project f
 
 ## 🔗 Live Links
 * **Swagger Documentation:** [View Swagger UI](https://todolistfullstack-dqhg.onrender.com/index.html)
-* **Frontend Repository:** [Link to React Repository]
+* **Frontend Repository:** https://github.com/shulamit-herskowitz/ToDoList-Client
 
 ---
 ⭐ Developed as part of the Practicode Workshop.
